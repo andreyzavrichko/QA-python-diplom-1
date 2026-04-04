@@ -1,48 +1,46 @@
 import pytest
+
+from data import Data
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options as ChromeOptions
+from pages.main_page import MainPage
+from pages.call_taxi_page import CallTaxiPage
 
 
-def pytest_addoption(parser: pytest.Parser) -> None:
-    parser.addoption(
-        "--selenoid-uri",
-        action="store",
-        default=None,
-        help="Selenoid WebDriver URL, e.g. http://selenoid:4444/wd/hub",
-    )
-    parser.addoption(
-        "--headless",
-        action="store_true",
-        default=False,
-        help="Запускать Chrome в headless-режиме",
-    )
+@pytest.fixture(scope="function")
+def driver():
+    drv = webdriver.Chrome()
+    drv.maximize_window()
+    yield drv
+    drv.quit()
 
 
 @pytest.fixture
-def driver(request: pytest.FixtureRequest):
-    selenoid_uri: str | None = request.config.getoption("--selenoid-uri")
-    headless: bool = request.config.getoption("--headless")
+def main_page(driver) -> MainPage:
+    page = MainPage(driver)
+    page.go_to_url(Data.urls.MAIN_PAGE)
+    return page
 
-    options = ChromeOptions()
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
-    if headless:
-        options.add_argument("--headless=new")
+@pytest.fixture
+def call_taxi_page(main_page) -> CallTaxiPage:
+    main_page.add_two_address(Data.addresses.LOCATION_1, Data.addresses.LOCATION_2)
+    main_page.confirm_order_taxi()
+    return CallTaxiPage(main_page.driver)
 
-    if selenoid_uri:
-        options.set_capability(
-            "selenoid:options", {"enableVNC": False, "enableVideo": False}
-        )
-        browser = webdriver.Remote(
-            command_executor=selenoid_uri,
-            options=options,
-        )
-    else:
-        browser = webdriver.Chrome(options=options)
 
-    yield browser
-    browser.quit()
+@pytest.fixture
+def call_taxi_page_waiting(call_taxi_page) -> CallTaxiPage:
+    call_taxi_page.open_waiting_window()
+    return call_taxi_page
+
+
+@pytest.fixture
+def call_taxi_page_final(call_taxi_page_waiting) -> CallTaxiPage:
+    call_taxi_page_waiting.wait_for_timer_to_expire()
+    return call_taxi_page_waiting
+
+
+@pytest.fixture
+def call_taxi_page_price(main_page) -> CallTaxiPage:
+    main_page.add_two_address(Data.addresses.LOCATION_1, Data.addresses.LOCATION_2)
+    return CallTaxiPage(main_page.driver)
