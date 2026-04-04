@@ -70,7 +70,7 @@ allure serve allure-results
 ## Покрытие
 
 | Модуль | Блок по ТЗ | 
-|---|---|---|
+|---|---|
 | `test_route_drawing` | Отрисовка маршрута |
 | `test_route_block` | Блок выбора маршрута |
 | `test_taxi_preparation` | Подготовка к заказу такси |
